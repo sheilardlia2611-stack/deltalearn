@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeltaLearn Prototype</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: #1a0a30; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 24px 16px 40px; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+h1 { color: #FFB300; font-size: 20px; margin-bottom: 4px; text-align: center; letter-spacing: -0.3px; }
+.subtitle { color: #A78ECC; font-size: 12px; margin-bottom: 20px; text-align: center; }
+
+/* Phone shell */
+.phone { width: 320px; background: #0f0820; border-radius: 44px; padding: 14px; box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,179,0,0.2); border: 2px solid #3B1A6B; position: relative; }
+.phone-notch { width: 80px; height: 22px; background: #0f0820; border-radius: 0 0 16px 16px; margin: 0 auto 6px; }
+.phone-inner { background: #F8F5FF; border-radius: 32px; overflow: hidden; height: 620px; display: flex; flex-direction: column; position: relative; }
+
+/* Screens */
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(.4,0,.2,1), opacity 0.3s; }
+.screen.active { transform: translateX(0); opacity: 1; z-index: 2; }
+.screen.hidden-left { transform: translateX(-100%); opacity: 0; z-index: 1; }
+.screen.hidden-right { transform: translateX(100%); opacity: 0; z-index: 1; }
+
+/* Status bar */
+.status-bar { background: #2A0F52; padding: 10px 18px 7px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.status-time { color: #E8D9FF; font-size: 11px; font-weight: 700; }
+.status-icons { color: #E8D9FF; font-size: 10px; display: flex; gap: 4px; }
+
+/* ────── HOME ────── */
+.home-header { background: #2A0F52; padding: 14px 18px 20px; flex-shrink: 0; }
+.home-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; }
+.home-greeting { color: #D1C4E9; font-size: 11px; }
+.home-name { color: #FFB300; font-size: 19px; font-weight: 800; }
+.home-sub { color: #A78ECC; font-size: 10px; margin-top: 1px; }
+.logo-pill { display: flex; align-items: center; gap: 5px; background: rgba(255,179,0,0.12); padding: 5px 10px; border-radius: 20px; }
+.logo-tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid #FFB300; }
+.logo-wm { color: #FFB300; font-size: 12px; font-weight: 700; }
+.logo-wm span { color: #E8D9FF; font-weight: 400; }
+
+.home-body { flex: 1; overflow-y: auto; padding: 14px; scrollbar-width: none; }
+.home-body::-webkit-scrollbar { display: none; }
+
+/* Ainalisis banner */
+.ai-banner { background: linear-gradient(135deg, #5E35B1 0%, #2A0F52 100%); border-radius: 18px; padding: 16px; margin-bottom: 16px; position: relative; overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+.ai-banner:active { transform: scale(0.97); }
+.ai-banner::before { content: 'Δ'; position: absolute; right: 10px; top: -4px; font-size: 72px; color: rgba(255,179,0,0.08); font-weight: 900; pointer-events: none; }
+.ai-chip { background: rgba(255,179,0,0.18); color: #FFD54F; font-size: 9px; font-weight: 700; padding: 3px 10px; border-radius: 12px; display: inline-block; margin-bottom: 7px; letter-spacing: 0.06em; }
+.ai-banner-title { color: #fff; font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+.ai-banner-desc { color: #C5B3F0; font-size: 10px; line-height: 1.5; margin-bottom: 12px; }
+.ai-banner-btn { background: #FFB300; color: #2A0F52; font-size: 11px; font-weight: 800; padding: 8px 16px; border-radius: 20px; display: inline-block; }
+
+.sec-title { font-size: 12px; font-weight: 800; color: #2A0F52; margin-bottom: 10px; letter-spacing: 0.02em; }
+
+/* Menu cards */
+.menu-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.menu-card { background: white; border-radius: 14px; padding: 14px 6px; text-align: center; border: 1.5px solid #EDE7F6; cursor: pointer; transition: all 0.15s; box-shadow: 0 2px 8px rgba(94,53,177,0.06); }
+.menu-card:active { transform: scale(0.93); background: #EDE7F6; }
+.menu-card-icon { font-size: 22px; margin-bottom: 5px; }
+.menu-card-name { font-size: 9px; font-weight: 700; color: #2A0F52; line-height: 1.3; }
+
+/* Result preview */
+.result-preview { background: white; border-radius: 14px; padding: 13px; border: 1.5px solid #EDE7F6; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+.result-preview:active { transform: scale(0.98); }
+.result-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.result-info-label { font-size: 11px; font-weight: 700; color: #2A0F52; }
+.result-info-sub { font-size: 9px; color: #7B7B9B; margin-top: 1px; }
+.result-score-big { font-size: 26px; font-weight: 800; color: #FFB300; line-height: 1; }
+.result-score-of { font-size: 9px; color: #7B7B9B; text-align: right; }
+.prog-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+.prog-name { font-size: 9px; color: #5E35B1; font-weight: 600; }
+.prog-val { font-size: 9px; color: #7B7B9B; }
+.prog-bar { height: 5px; background: #EDE7F6; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.prog-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+/* Navbar */
+.navbar { background: white; border-top: 1.5px solid #EDE7F6; padding: 8px 4px 12px; display: flex; justify-content: space-around; flex-shrink: 0; }
+.nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 10px; border-radius: 12px; transition: background 0.15s; border: none; background: none; }
+.nav-btn:active { background: #EDE7F6; }
+.nav-icon { font-size: 16px; line-height: 1; }
+.nav-label { font-size: 8px; font-weight: 600; color: #7B7B9B; }
+.nav-btn.active .nav-label { color: #5E35B1; }
+.nav-dot { width: 4px; height: 4px; border-radius: 50%; background: #FFB300; }
+
+/* ────── AINALISIS ────── */
+.ai-topbar { background: #2A0F52; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.back-btn { color: #FFB300; font-size: 18px; cursor: pointer; padding: 4px; line-height: 1; }
+.ai-ava { width: 36px; height: 36px; background: #FFB300; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900; color: #2A0F52; flex-shrink: 0; }
+.ai-nm { color: #FFD54F; font-size: 13px; font-weight: 800; }
+.ai-st { color: #A78ECC; font-size: 9px; }
+
+.chat-area { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: #F0EBF8; scrollbar-width: none; }
+.chat-area::-webkit-scrollbar { display: none; }
+
+.bubble { max-width: 88%; }
+.bubble-from-ai { align-self: flex-start; }
+.bubble-from-user { align-self: flex-end; }
+.bx { padding: 10px 13px; border-radius: 16px; font-size: 10px; line-height: 1.6; }
+.bubble-from-ai .bx { background: white; color: #1a1a2e; border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(94,53,177,0.08); }
+.bubble-from-user .bx { background: #5E35B1; color: white; border-bottom-right-radius: 4px; }
+.btime { font-size: 8px; color: #9090A8; margin-top: 3px; padding: 0 2px; }
+.bubble-from-user .btime { text-align: right; }
+
+.analysis-card { background: #F8F5FF; border: 1.5px solid #EDE7F6; border-radius: 12px; padding: 11px; margin-top: 6px; }
+.ac-title { font-size: 10px; font-weight: 800; color: #2A0F52; margin-bottom: 8px; }
+.ac-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 0.5px solid #EDE7F6; }
+.ac-row:last-child { border-bottom: none; }
+.ac-subj { font-size: 9px; color: #5E35B1; font-weight: 600; }
+.badge { font-size: 8px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.badge-weak { background: #FFEBEE; color: #C62828; }
+.badge-ok { background: #FFF8E1; color: #E65100; }
+.badge-strong { background: #E8F5E9; color: #2E7D32; }
+.ac-tip { background: #EDE7F6; border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 9px; color: #3B1A6B; line-height: 1.5; }
+
+.chat-input-bar { background: white; border-top: 1.5px solid #EDE7F6; padding: 10px 12px; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.upload-pill { background: #EDE7F6; border-radius: 20px; padding: 8px 12px; font-size: 10px; color: #5E35B1; font-weight: 700; flex-shrink: 0; cursor: pointer; transition: background 0.15s; }
+.upload-pill:active { background: #D1C4E9; }
+.chat-input { flex: 1; background: #F8F5FF; border-radius: 20px; padding: 8px 12px; font-size: 10px; color: #7B7B9B; border: 1.5px solid #EDE7F6; outline: none; }
+.send-pill { width: 32px; height: 32px; background: #FFB300; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #2A0F52; font-weight: 900; flex-shrink: 0; cursor: pointer; transition: transform 0.15s; }
+.send-pill:active { transform: scale(0.9); }
+
+/* ────── LATIHAN SOAL ────── */
+.latihan-header { background: #2A0F52; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.lh-title { color: #FFD54F; font-size: 14px; font-weight: 800; flex: 1; }
+.lh-prog { color: #A78ECC; font-size: 10px; }
+.latihan-body { flex: 1; overflow-y: auto; padding: 16px; scrollbar-width: none; }
+.soal-number { font-size: 10px; font-weight: 700; color: #7B7B9B; margin-bottom: 6px; }
+.soal-subtes { background: #FFB300; color: #2A0F52; font-size: 9px; font-weight: 800; padding: 3px 10px; border-radius: 12px; display: inline-block; margin-bottom: 10px; }
+.soal-q { font-size: 13px; font-weight: 700; color: #2A0F52; line-height: 1.6; margin-bottom: 16px; }
+.soal-opts-list { display: flex; flex-direction: column; gap: 8px; }
+.soal-opt-btn { background: white; border: 1.5px solid #EDE7F6; border-radius: 12px; padding: 12px 14px; font-size: 11px; color: #2A0F52; text-align: left; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
+.soal-opt-btn:active { background: #EDE7F6; }
+.soal-opt-btn.selected { border-color: #5E35B1; background: #EDE7F6; color: #5E35B1; font-weight: 700; }
+.soal-opt-btn.correct { border-color: #1D9E75; background: #E1F5EE; color: #0F6E56; font-weight: 700; }
+.soal-opt-btn.wrong { border-color: #E24B4A; background: #FFEBEE; color: #C62828; font-weight: 700; }
+.opt-circle { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #EDE7F6; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.selected .opt-circle { border-color: #5E35B1; background: #5E35B1; color: white; }
+.correct .opt-circle { border-color: #1D9E75; background: #1D9E75; color: white; }
+.wrong .opt-circle { border-color: #E24B4A; background: #E24B4A; color: white; }
+
+.latihan-footer { background: white; border-top: 1.5px solid #EDE7F6; padding: 12px 16px; display: flex; gap: 10px; flex-shrink: 0; }
+.btn-kirim { flex: 1; background: #EDE7F6; color: #5E35B1; font-size: 12px; font-weight: 700; padding: 12px; border-radius: 20px; border: none; cursor: pointer; transition: all 0.15s; }
+.btn-kirim:active { background: #D1C4E9; }
+.btn-next { flex: 2; background: #5E35B1; color: white; font-size: 12px; font-weight: 700; padding: 12px; border-radius: 20px; border: none; cursor: pointer; transition: all 0.15s; }
+.btn-next:active { background: #2A0F52; }
+.btn-next.gold { background: #FFB300; color: #2A0F52; }
+
+/* ────── ULAR TANGGA PVP ────── */
+.pvp-header { background: #2A0F52; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.pvp-title-wrap { flex: 1; }
+.pvp-title { color: #FFD54F; font-size: 14px; font-weight: 800; }
+.pvp-sub { color: #A78ECC; font-size: 9px; }
+.pvp-players { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: white; border-bottom: 1.5px solid #EDE7F6; flex-shrink: 0; }
+.player-c { text-align: center; }
+.p-ava { width: 36px; height: 36px; border-radius: 50%; margin: 0 auto 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; }
+.p-you .p-ava { background: #FFB300; color: #2A0F52; }
+.p-opp .p-ava { background: #EDE7F6; color: #5E35B1; }
+.p-name { font-size: 10px; font-weight: 700; color: #2A0F52; }
+.p-pos { font-size: 8px; color: #7B7B9B; }
+.vs-txt { font-size: 20px; font-weight: 900; color: #5E35B1; }
+.board-area { padding: 10px 12px 6px; flex-shrink: 0; }
+.board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.bc { aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; font-size: 10px; }
+.bc-num { position: absolute; top: 2px; left: 3px; font-size: 7px; font-weight: 600; opacity: 0.4; }
+.bc-normal { background: #EDE7F6; }
+.bc-gold { background: #FFB300; }
+.bc-purple { background: #5E35B1; }
+.bc-finish { background: linear-gradient(135deg, #FFB300, #5E35B1); }
+.pion { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; border: 2px solid white; }
+.pion-s { background: #FFB300; color: #2A0F52; }
+.pion-l { background: #E24B4A; color: white; }
+.dadu-area { padding: 0 12px 8px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.dadu-btn { background: #FFB300; color: #2A0F52; font-size: 11px; font-weight: 800; padding: 10px 20px; border-radius: 20px; border: none; cursor: pointer; transition: all 0.15s; }
+.dadu-btn:active { transform: scale(0.94); background: #e6a200; }
+.dadu-result { font-size: 13px; font-weight: 700; color: #5E35B1; }
+.pvp-soal { background: white; border-top: 2px solid #FFB300; padding: 12px 14px; flex-shrink: 0; }
+.pvp-soal-tag { background: #FFB300; color: #2A0F52; font-size: 8px; font-weight: 800; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 6px; }
+.pvp-soal-q { font-size: 10px; font-weight: 700; color: #2A0F52; margin-bottom: 8px; line-height: 1.4; }
+.pvp-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.pvp-opt { background: #F8F5FF; border: 1.5px solid #EDE7F6; border-radius: 10px; padding: 8px; font-size: 9px; color: #2A0F52; text-align: center; cursor: pointer; transition: all 0.15s; }
+.pvp-opt:active { transform: scale(0.95); }
+.pvp-opt.pvp-correct { background: #E1F5EE; border-color: #1D9E75; color: #0F6E56; font-weight: 700; }
+.pvp-opt.pvp-wrong { background: #FFEBEE; border-color: #E24B4A; color: #C62828; }
+
+/* ────── TRYOUT ────── */
+.tryout-header { background: #2A0F52; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.to-title { color: #FFD54F; font-size: 14px; font-weight: 800; flex: 1; }
+.to-timer { background: rgba(255,179,0,0.15); color: #FFB300; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 12px; }
+.tryout-progress { background: #2A0F52; padding: 0 16px 12px; flex-shrink: 0; }
+.to-prog-bar { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; }
+.to-prog-fill { height: 100%; background: #FFB300; border-radius: 2px; transition: width 0.4s; }
+.to-prog-label { color: #A78ECC; font-size: 9px; margin-top: 5px; }
+.tryout-body { flex: 1; overflow-y: auto; padding: 16px; scrollbar-width: none; }
+.to-subtes-badge { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.to-badge { background: #5E35B1; color: white; font-size: 9px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+.to-qnum { font-size: 10px; color: #7B7B9B; }
+.to-q { font-size: 13px; font-weight: 700; color: #2A0F52; line-height: 1.6; margin-bottom: 16px; }
+.to-opts { display: flex; flex-direction: column; gap: 8px; }
+.to-opt { background: white; border: 1.5px solid #EDE7F6; border-radius: 12px; padding: 11px 14px; font-size: 11px; color: #2A0F52; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.15s; }
+.to-opt:active { background: #EDE7F6; }
+.to-opt.to-selected { border-color: #5E35B1; background: #EDE7F6; color: #5E35B1; font-weight: 700; }
+.to-circle { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #EDE7F6; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.to-selected .to-circle { border-color: #5E35B1; background: #5E35B1; color: white; }
+.tryout-footer { background: white; border-top: 1.5px solid #EDE7F6; padding: 12px 16px; display: flex; gap: 10px; flex-shrink: 0; }
+.to-btn-kirim { flex: 1; background: #EDE7F6; color: #5E35B1; font-size: 12px; font-weight: 700; padding: 12px; border-radius: 20px; border: none; cursor: pointer; }
+.to-btn-next { flex: 2; background: #5E35B1; color: white; font-size: 12px; font-weight: 700; padding: 12px; border-radius: 20px; border: none; cursor: pointer; transition: all 0.15s; }
+.to-btn-next:active { background: #2A0F52; }
+
+/* ────── DASHBOARD ────── */
+.dash-header { background: #2A0F52; padding: 14px 16px 18px; flex-shrink: 0; }
+.dash-title { color: #FFD54F; font-size: 16px; font-weight: 800; margin-bottom: 2px; }
+.dash-sub { color: #A78ECC; font-size: 10px; }
+.dash-body { flex: 1; overflow-y: auto; padding: 14px; scrollbar-width: none; }
+.score-card { background: linear-gradient(135deg, #5E35B1, #2A0F52); border-radius: 16px; padding: 16px; margin-bottom: 14px; text-align: center; }
+.score-label { color: #D1C4E9; font-size: 10px; margin-bottom: 4px; }
+.score-big { color: #FFB300; font-size: 44px; font-weight: 900; line-height: 1; }
+.score-of { color: #A78ECC; font-size: 11px; margin-top: 2px; }
+.score-note { color: #C5B3F0; font-size: 9px; margin-top: 8px; }
+.subtes-card { background: white; border-radius: 14px; padding: 13px; margin-bottom: 10px; border: 1.5px solid #EDE7F6; }
+.subtes-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.subtes-name { font-size: 11px; font-weight: 700; color: #2A0F52; }
+.subtes-score { font-size: 11px; font-weight: 700; }
+.subtes-prog { height: 6px; background: #EDE7F6; border-radius: 3px; overflow: hidden; }
+.subtes-fill { height: 100%; border-radius: 3px; }
+
+/* ────── AKUN ────── */
+.akun-header { background: #2A0F52; padding: 24px 16px 28px; flex-shrink: 0; text-align: center; }
+.akun-ava { width: 64px; height: 64px; background: #FFB300; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 900; color: #2A0F52; border: 3px solid rgba(255,255,255,0.2); }
+.akun-name { color: #FFD54F; font-size: 16px; font-weight: 800; }
+.akun-email { color: #A78ECC; font-size: 10px; margin-top: 2px; }
+.akun-plan { background: rgba(255,179,0,0.15); color: #FFB300; font-size: 9px; font-weight: 700; padding: 3px 12px; border-radius: 12px; display: inline-block; margin-top: 8px; }
+.akun-body { flex: 1; overflow-y: auto; padding: 14px; scrollbar-width: none; }
+.akun-menu-item { background: white; border-radius: 12px; padding: 13px 14px; border: 1.5px solid #EDE7F6; display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 8px; transition: all 0.15s; }
+.akun-menu-item:active { background: #EDE7F6; }
+.akun-menu-icon { font-size: 18px; width: 24px; text-align: center; }
+.akun-menu-text { flex: 1; font-size: 11px; font-weight: 600; color: #2A0F52; }
+.akun-menu-arrow { color: #C5B3F0; font-size: 14px; }
+.akun-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.akun-stat { background: white; border-radius: 12px; padding: 12px 8px; text-align: center; border: 1.5px solid #EDE7F6; }
+.akun-stat-val { font-size: 20px; font-weight: 800; color: #FFB300; }
+.akun-stat-label { font-size: 8px; color: #7B7B9B; margin-top: 2px; font-weight: 600; }
+
+/* ── Screen label strip ── */
+.nav-page-indicator { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+.nav-page-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,179,0,0.3); transition: background 0.2s; }
+.nav-page-dot.active { background: #FFB300; }
+</style>
+</head>
+<body>
+
+<h1>△ DeltaLearn</h1>
+<p class="subtitle">Prototype Interaktif · Tap untuk navigasi</p>
+
+<div class="phone">
+  <div class="phone-notch"></div>
+  <div class="phone-inner" id="phoneInner">
+
+    <!-- ══ SCREEN: HOME ══ -->
+    <div class="screen active" id="screen-home">
+      <div class="status-bar"><span class="status-time" id="clock">09:41</span><div class="status-icons"><span>▲</span><span>▲</span><span>■</span></div></div>
+      <div class="home-header">
+        <div class="home-top-row">
+          <div>
+            <div class="home-greeting">Selamat pagi,</div>
+            <div class="home-name">Sheila 👋</div>
+            <div class="home-sub">Hari ini mau latihan apa?</div>
+          </div>
+          <div class="logo-pill"><div class="logo-tri"></div><div class="logo-wm">Delta<span>Learn</span></div></div>
+        </div>
+      </div>
+      <div class="home-body">
+        <div class="ai-banner" onclick="goTo('screen-ainalisis')">
+          <div class="ai-chip">✦ AINALISIS AI</div>
+          <div class="ai-banner-title">Analisis Hasil Kamu</div>
+          <div class="ai-banner-desc">Upload hasil tryout dari mana saja atau kirim hasil latihan kamu untuk dapat laporan mendalam dari AI.</div>
+          <div class="ai-banner-btn">Buka Ainalisis →</div>
+        </div>
+        <div class="sec-title">Menu Latihan</div>
+        <div class="menu-grid">
+          <div class="menu-card" onclick="goTo('screen-latihan')"><div class="menu-card-icon">📝</div><div class="menu-card-name">Latihan Soal</div></div>
+          <div class="menu-card" onclick="goTo('screen-pvp')"><div class="menu-card-icon">🎲</div><div class="menu-card-name">Ular Tangga PvP</div></div>
+          <div class="menu-card" onclick="goTo('screen-tryout')"><div class="menu-card-icon">📊</div><div class="menu-card-name">Tryout</div></div>
+        </div>
+        <div class="sec-title">Hasil Terakhir</div>
+        <div class="result-preview" onclick="goTo('screen-dashboard')">
+          <div class="result-top">
+            <div><div class="result-info-label">Tryout #3 — TPS</div><div class="result-info-sub">2 hari lalu · Lihat detail →</div></div>
+            <div><div class="result-score-big">542</div><div class="result-score-of">dari 1000</div></div>
+          </div>
+          <div class="prog-row"><span class="prog-name">Penalaran Umum</span><span class="prog-val">48%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:48%;background:#E24B4A"></div></div>
+          <div class="prog-row"><span class="prog-name">Literasi Indonesia</span><span class="prog-val">72%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:72%;background:#1D9E75"></div></div>
+          <div class="prog-row"><span class="prog-name">Matematika</span><span class="prog-val">39%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:39%;background:#E24B4A"></div></div>
+        </div>
+      </div>
+      <div class="navbar">
+        <button class="nav-btn active" onclick="goTo('screen-home')"><span class="nav-icon">🏠</span><span class="nav-label" style="color:#5E35B1">Home</span><div class="nav-dot"></div></button>
+        <button class="nav-btn" onclick="goTo('screen-ainalisis')"><span class="nav-icon">✦</span><span class="nav-label">Ainalisis</span></button>
+        <button class="nav-btn" onclick="goTo('screen-dashboard')"><span class="nav-icon">📈</span><span class="nav-label">Dashboard</span></button>
+        <button class="nav-btn" onclick="goTo('screen-akun')"><span class="nav-icon">👤</span><span class="nav-label">Akun</span></button>
+      </div>
+    </div>
+
+    <!-- ══ SCREEN: AINALISIS ══ -->
+    <div class="screen hidden-right" id="screen-ainalisis">
+      <div class="status-bar"><span class="status-time">09:45</span><div class="status-icons"><span>▲</span><span>▲</span><span>■</span></div></div>
+      <div class="ai-topbar">
+        <span class="back-btn" onclick="goTo('screen-home')">‹</span>
+        <div class="ai-ava">Δ</div>
+        <div><div class="ai-nm">Ainalisis</div><div class="ai-st">● Siap menganalisis</div></div>
+      </div>
+      <div class="chat-area" id="chatArea">
+        <div class="bubble bubble-from-ai">
+          <div class="bx">Hai Sheila! Kirim atau upload hasil tryout kamu — dari platform mana saja boleh ya 😊 Aku akan analisis secara mendalam dan kasih rekomendasi belajar yang spesifik.</div>
+          <div class="btime">09:41</div>
+        </div>
+        <div class="bubble bubble-from-user">
+          <div class="bx">Ini hasil tryout aku dari Zenius kemarin</div>
+          <div class="btime">09:44</div>
+        </div>
+        <div class="bubble bubble-from-ai">
+          <div class="bx">
+            Oke, udah aku baca! Ini hasil analisisnya 👇
+            <div class="analysis-card">
+              <div class="ac-title">📋 Analisis Tryout #3 — TPS</div>
+              <div class="ac-row"><span class="ac-subj">Penalaran Umum</span><span class="badge badge-weak">⚠ Lemah</span></div>
+              <div class="ac-row"><span class="ac-subj">Literasi Indonesia</span><span class="badge badge-strong">✓ Kuat</span></div>
+              <div class="ac-row"><span class="ac-subj">Literasi Inggris</span><span class="badge badge-ok">≈ Cukup</span></div>
+              <div class="ac-row"><span class="ac-subj">Matematika</span><span class="badge badge-weak">⚠ Lemah</span></div>
+              <div class="ac-tip">💡 Fokus latihan di <strong>Penalaran Umum</strong> dulu — itu yang paling berdampak ke skor total kamu. Target 60%+ dulu sebelum lanjut ke mapel lain.</div>
+            </div>
+          </div>
+          <div class="btime">09:45</div>
+        </div>
+      </div>
+      <div class="chat-input-bar">
+        <div class="upload-pill">📎 Upload</div>
+        <input class="chat-input" placeholder="Tanya atau kirim hasil..." id="chatInput">
+        <div class="send-pill" onclick="sendChat()">→</div>
+      </div>
+    </div>
+
+    <!-- ══ SCREEN: LATIHAN SOAL ══ -->
+    <div class="screen hidden-right" id="screen-latihan">
+      <div class="status-bar"><span class="status-time">10:00</span><div class="status-icons"><span>▲</span><span>▲</span><span>■</span></div></div>
+      <div class="latihan-header">
+        <span class="back-btn" onclick="goTo('screen-home')" style="color:#FFB300;font-size:18px;cursor:pointer">‹</span>
+        <span class="lh-title">Latihan Soal</span>
+        <span class="lh-prog">1 / 5</span>
+      </div>
+      <div class="latihan-body">
+        <div class="soal-number">Soal 1</div>
+        <div class="soal-subtes">TPS — Penalaran Umum</div>
+        <div class="soal-q">Semua mahasiswa rajin belajar. Budi adalah mahasiswa. Kesimpulan yang paling tepat adalah...</div>
+        <div class="soal-opts-list">
+          <div class="soal-opt-btn" onclick="pilihJawaban(this,'A')"><div class="opt-circle">A</div>Budi mungkin rajin belajar</div>
+          <div class="soal-opt-btn" onclick="pilihJawaban(this,'B')"><div class="opt-circle">B</div>Budi pasti rajin belajar</div>
+          <div class="soal-opt-btn" onclick="pilihJawaban(this,'C')"><div class="opt-circle">C</div>Budi tidak suka belajar</div>
+          <div class="soal-opt-btn" onclick="pilihJawaban(this,'D')"><div class="opt-circle">D</div>Budi bukan mahasiswa</div>
+        </div>
+      </div>
+      <div class="latihan-footer">
+        <button class="btn-kirim" onclick="goTo('screen-ainalisis')">📊 Kirim ke Ainalisis</button>
+        <button class="btn-next" id="btnNext" onclick="nextSoal()">Lanjut →</button>
+      </div>
+    </div>
+
+    <!-- ══ SCREEN: ULAR TANGGA PVP ══ -->
+    <div class="screen hidden-right" id="screen-pvp">
+      <div class="status-bar"><span class="status-time">10:02</span><div class="status-icons"><span>▲</span><span>▲</span><span>■</span></div></div>
+      <div class="pvp-header">
+        <span class="back-btn" onclick="goTo('screen-home')" style="color:#FFB300;font-size:18px;cursor:pointer">‹</span>
+        <div class="pvp-title-wrap"><div class="pvp-title">🎲 Ular Tangga UTBK</div><div class="pvp-sub">PvP · Lawan orang random</div></div>
+      </div>
+      <div class="pvp-players">
+        <div class="player-c p-you"><div class="p-ava">S</div><div class="p-name">Kamu</div><div class="p-pos" id="posKamu">Kotak 7</div></div>
+        <div class="vs-txt">VS</div>
+        <div class="player-c p-opp"><div class="p-ava">?</div><div class="p-name">Lawan</div><div class="p-pos" id="posLawan">Kotak 4</div></div>
+      </div>
+      <div class="board-area">
+        <div class="board-grid" id="boardGrid"></div>
+      </div>
+      <div class="dadu-area">
+        <div class="dadu-result" id="daduResult">Giliran kamu! 🎲</div>
+        <button class="dadu-btn" id="daduBtn" onclick="lemparDadu()">Lempar Dadu</button>
+      </div>
+      <div class="pvp-soal" id="pvpSoal" style="display:none">
+        <div class="pvp-soal-tag" id="pvpTag">TPS — Penalaran Umum</div>
+        <div class="pvp-soal-q" id="pvpQ">Pertanyaan muncul di sini...</div>
+        <div class="pvp-opts" id="pvpOpts"></div>
+      </div>
+    </div>
+
+    <!-- ══ SCREEN: TRYOUT ══ -->
+    <div class="screen hidden-right" id="screen-tryout">
+      <div class="status-bar"><span class="status-time">10:15</span><div class="status-icons"><span>▲</span><span>▲</span><span>■</span></div></div>
+      <div class="tryout-header">
+        <span class="back-btn" onclick="goTo('screen-home')" style="color:#FFB300;font-size:18px;cursor:pointer">‹</span>
+        <span class="to-title">Tryout UTBK</span>
+        <div class="to-timer" id="toTimer">45:00</div>
+      </div>
+      <div class="tryout-progress">
+        <div class="to-prog-bar"><div class="to-prog-fill" id="toProgFill" style="width:20%"></div></div>
+        <div class="to-prog-label">Soal 1 dari 5 · TPS</div>
+      </div>
+      <div class="tryout-body">
+        <div class="to-subtes-badge"><div class="to-badge">TPS</div><div class="to-qnum">No. 1</div></div>
+        <div class="to-q">Bacalah teks berikut dengan seksama. Manakah pernyataan yang PALING TEPAT berdasarkan teks tersebut?</div>
+        <div class="to-opts">
+          <div class="to-opt" onclick="pilihTO(this,'A')"><div class="to-circle">A</div>Teknologi AI memperburuk kualitas pendidikan</div>
+          <div class="to-opt" onclick="pilihTO(this,'B')"><div class="to-circle">B</div>AI dapat membantu personalisasi pembelajaran</div>
+          <div class="to-opt" onclick="pilihTO(this,'C')"><div class="to-circle">C</div>Guru tidak lagi dibutuhkan di era AI</div>
+          <div class="to-opt" onclick="pilihTO(this,'D')"><div class="to-circle">D</div>AI hanya berguna untuk pekerjaan teknis</div>
+        </div>
+      </div>
+      <div class="tryout-footer">
+        <button class="to-btn-kirim" onclick="goTo('screen-ainalisis')">📊 Kirim ke Ainalisis</button>
+        <button class="to-btn-next" onclick="nextTO()">Lanjut →</button>
+      </div>
+    </div>
+
+    <!-- ══ SCREEN: DASHBOARD ══ -->
+    <div class="screen hidden-right" id="screen-dashboard">
+      <div class="status-bar"><span class="status-time">10:30</span><div class="status-icons"><span>▲</span><span>▲</span><span>■</span></div></div>
+      <div class="dash-header"><div class="dash-title">Dashboard</div><div class="dash-sub">Progress belajar kamu</div></div>
+      <div class="dash-body">
+        <div class="score-card">
+          <div class="score-label">Skor Tryout Terakhir</div>
+          <div class="score-big">542</div>
+          <div class="score-of">dari 1000</div>
+          <div class="score-note">📈 Naik 28 poin dari tryout sebelumnya</div>
+        </div>
+        <div class="sec-title">Per Subtes</div>
+        <div class="subtes-card">
+          <div class="subtes-row"><span class="subtes-name">Penalaran Umum</span><span class="subtes-score" style="color:#E24B4A">48%</span></div>
+          <div class="subtes-prog"><div class="subtes-fill" style="width:48%;background:#E24B4A"></div></div>
+        </div>
+        <div class="subtes-card">
+          <div class="subtes-row"><span class="subtes-name">Literasi Indonesia</span><span class="subtes-score" style="color:#1D9E75">72%</span></div>
+          <div class="subtes-prog"><div class="subtes-fill" style="width:72%;background:#1D9E75"></div></div>
+        </div>
+        <div class="subtes-card">
+          <div class="subtes-row"><span class="subtes-name">Literasi Inggris</span><span class="subtes-score" style="color:#BA7517">61%</span></div>
+          <div class="subtes-prog"><div class="subtes-fill" style="width:61%;background:#BA7517"></div></div>
+        </div>
+        <div class="subtes-card">
+          <div class="subtes-row"><span class="subtes-name">Matematika</span><span class="subtes-score" style="color:#E24B4A">39%</span></div>
+          <div class="subtes-prog"><div class="subtes-fill" style="width:39%;background:#E24B4A"></div></div>
+        </div>
+      </div>
+      <div class="navbar">
+        <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+        <button class="nav-btn" onclick="goTo('screen-ainalisis')"><span class="nav-icon">✦</span><span class="nav-label">Ainalisis</span></button>
+        <button class="nav-btn active" onclick="goTo('screen-dashboard')"><span class="nav-icon">📈</span><span class="nav-label" style="color:#5E35B1">Dashboard</span><div class="nav-dot"></div></button>
+        <button class="nav-btn" onclick="goTo('screen-akun')"><span class="nav-icon">👤</span><span class="nav-label">Akun</span></button>
+      </div>
+    </div>
+
+    <!-- ══ SCREEN: AKUN ══ -->
+    <div class="screen hidden-right" id="screen-akun">
+      <div class="status-bar"><span class="status-time">10:35</span><div class="status-icons"><span>▲</span><span>▲</span><span>■</span></div></div>
+      <div class="akun-header">
+        <div class="akun-ava">S</div>
+        <div class="akun-name">Sheila Ardelia</div>
+        <div class="akun-email">sheila.ardelia@email.com</div>
+        <div class="akun-plan">✦ Akun Gratis</div>
+      </div>
+      <div class="akun-body">
+        <div class="akun-stats">
+          <div class="akun-stat"><div class="akun-stat-val">12</div><div class="akun-stat-label">Latihan</div></div>
+          <div class="akun-stat"><div class="akun-stat-val">3</div><div class="akun-stat-label">Tryout</div></div>
+          <div class="akun-stat"><div class="akun-stat-val">7</div><div class="akun-stat-label">PvP Menang</div></div>
+        </div>
+        <div class="sec-title">Menu Akun</div>
+        <div class="akun-menu-item"><span class="akun-menu-icon">⭐</span><span class="akun-menu-text">Upgrade ke Premium</span><span class="akun-menu-arrow">›</span></div>
+        <div class="akun-menu-item"><span class="akun-menu-icon">📋</span><span class="akun-menu-text">Riwayat Analisis</span><span class="akun-menu-arrow">›</span></div>
+        <div class="akun-menu-item"><span class="akun-menu-icon">🎯</span><span class="akun-menu-text">Target PTN Saya</span><span class="akun-menu-arrow">›</span></div>
+        <div class="akun-menu-item"><span class="akun-menu-icon">⚙️</span><span class="akun-menu-text">Pengaturan</span><span class="akun-menu-arrow">›</span></div>
+        <div class="akun-menu-item"><span class="akun-menu-icon">🚪</span><span class="akun-menu-text">Keluar</span><span class="akun-menu-arrow">›</span></div>
+      </div>
+      <div class="navbar">
+        <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+        <button class="nav-btn" onclick="goTo('screen-ainalisis')"><span class="nav-icon">✦</span><span class="nav-label">Ainalisis</span></button>
+        <button class="nav-btn" onclick="goTo('screen-dashboard')"><span class="nav-icon">📈</span><span class="nav-label">Dashboard</span></button>
+        <button class="nav-btn active" onclick="goTo('screen-akun')"><span class="nav-icon">👤</span><span class="nav-label" style="color:#5E35B1">Akun</span><div class="nav-dot"></div></button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="nav-page-indicator">
+  <div class="nav-page-dot active" id="dot-home"></div>
+  <div class="nav-page-dot" id="dot-ainalisis"></div>
+  <div class="nav-page-dot" id="dot-latihan"></div>
+  <div class="nav-page-dot" id="dot-pvp"></div>
+  <div class="nav-page-dot" id="dot-tryout"></div>
+  <div class="nav-page-dot" id="dot-dashboard"></div>
+  <div class="nav-page-dot" id="dot-akun"></div>
+</div>
+<p style="color:#A78ECC;font-size:11px;text-align:center;margin-top:10px;">Tap semua tombol & kartu untuk navigasi</p>
+
+<script>
+let currentScreen = 'screen-home';
+
+function goTo(screenId) {
+  const current = document.getElementById(currentScreen);
+  const next = document.getElementById(screenId);
+  if (!next || screenId === currentScreen) return;
+  current.classList.remove('active');
+  current.classList.add('hidden-left');
+  next.classList.remove('hidden-right', 'hidden-left');
+  next.classList.add('active');
+  currentScreen = screenId;
+  // Update dots
+  document.querySelectorAll('.nav-page-dot').forEach(d => d.classList.remove('active'));
+  const dotId = 'dot-' + screenId.replace('screen-','');
+  const dot = document.getElementById(dotId);
+  if (dot) dot.classList.add('active');
+}
+
+// Chat
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const area = document.getElementById('chatArea');
+  const userBubble = document.createElement('div');
+  userBubble.className = 'bubble bubble-from-user';
+  userBubble.innerHTML = `<div class="bx">${val}</div><div class="btime">Sekarang</div>`;
+  area.appendChild(userBubble);
+  input.value = '';
+  setTimeout(() => {
+    const aiBubble = document.createElement('div');
+    aiBubble.className = 'bubble bubble-from-ai';
+    aiBubble.innerHTML = `<div class="bx">Oke! Aku sedang memproses... Kirim file hasil tryout kamu ya untuk analisis yang lebih akurat 📎</div><div class="btime">Sekarang</div>`;
+    area.appendChild(aiBubble);
+    area.scrollTop = area.scrollHeight;
+  }, 800);
+  area.scrollTop = area.scrollHeight;
+}
+
+// Latihan soal
+let selectedJawaban = null;
+function pilihJawaban(el, jawaban) {
+  document.querySelectorAll('#screen-latihan .soal-opt-btn').forEach(b => {
+    b.classList.remove('selected','correct','wrong');
+    b.querySelector('.opt-circle').textContent = b.querySelector('.opt-circle').textContent;
+  });
+  el.classList.add('selected');
+  selectedJawaban = jawaban;
+}
+function nextSoal() {
+  if (!selectedJawaban) { return; }
+  const opts = document.querySelectorAll('#screen-latihan .soal-opt-btn');
+  opts.forEach(b => b.classList.remove('selected','correct','wrong'));
+  // Show correct answer (B)
+  opts[1].classList.add('correct');
+  if (selectedJawaban !== 'B') opts.forEach((b,i) => { if(b.classList.contains('selected') || (selectedJawaban==='A'&&i===0)||(selectedJawaban==='C'&&i===2)||(selectedJawaban==='D'&&i===3)) b.classList.add('wrong'); });
+  selectedJawaban = null;
+  setTimeout(() => {
+    opts.forEach(b => b.classList.remove('correct','wrong'));
+  }, 1200);
+}
+
+// Tryout
+function pilihTO(el, jawaban) {
+  document.querySelectorAll('#screen-tryout .to-opt').forEach(b => {
+    b.classList.remove('to-selected');
+    b.querySelector('.to-circle').textContent = b.querySelector('.to-circle').textContent;
+  });
+  el.classList.add('to-selected');
+}
+let toQ = 1;
+function nextTO() {
+  toQ = Math.min(toQ + 1, 5);
+  document.getElementById('toProgFill').style.width = (toQ * 20) + '%';
+  document.querySelectorAll('#screen-tryout .to-opt').forEach(b => b.classList.remove('to-selected'));
+}
+
+// Ular Tangga PvP
+let posKamu = 7, posLawan = 4;
+const pvpSoals = [
+  { tag: 'TPS — Penalaran Umum', q: 'Jika A > B dan B > C, maka...', opts: ['A < C', 'A > C', 'A = C', 'Tidak bisa ditentukan'], correct: 1 },
+  { tag: 'TPS — Literasi', q: 'Kata "signifikan" bermakna...', opts: ['Tidak penting', 'Penting sekali', 'Biasa saja', 'Meragukan'], correct: 1 },
+  { tag: 'TKA — Matematika', q: '2³ × 2² = ?', opts: ['2⁵', '2⁶', '4⁵', '2'], correct: 0 },
+];
+
+function buildBoard() {
+  const grid = document.getElementById('boardGrid');
+  grid.innerHTML = '';
+  const cells = [];
+  for (let i = 25; i >= 1; i--) {
+    const row = Math.floor((25 - i) / 5);
+    cells.push({ num: i, row });
+  }
+  cells.forEach(cell => {
+    const div = document.createElement('div');
+    div.className = 'bc';
+    if (cell.num === 25) div.classList.add('bc-finish');
+    else if ([9, 16, 22].includes(cell.num)) div.classList.add('bc-gold');
+    else if ([3, 13, 20].includes(cell.num)) div.classList.add('bc-purple');
+    else div.classList.add('bc-normal');
+    div.innerHTML = `<span class="bc-num">${cell.num}</span>`;
+    if (cell.num === posKamu && cell.num === posLawan) {
+      div.innerHTML += `<div class="pion pion-s">S</div><div class="pion pion-l">L</div>`;
+    } else if (cell.num === posKamu) {
+      div.innerHTML += `<div class="pion pion-s">S</div>`;
+    } else if (cell.num === posLawan) {
+      div.innerHTML += `<div class="pion pion-l">L</div>`;
+    }
+    if (cell.num === 25) div.innerHTML += '🏆';
+    grid.appendChild(div);
+  });
+}
+
+let waitingAnswer = false;
+function lemparDadu() {
+  if (waitingAnswer) return;
+  const dadu = Math.floor(Math.random() * 6) + 1;
+  document.getElementById('daduResult').textContent = `🎲 Dadu: ${dadu}! Maju ${dadu} kotak`;
+  document.getElementById('daduBtn').disabled = true;
+  posKamu = Math.min(posKamu + dadu, 25);
+  document.getElementById('posKamu').textContent = `Kotak ${posKamu}`;
+  buildBoard();
+  setTimeout(() => {
+    showSoalPVP();
+  }, 600);
+}
+
+function showSoalPVP() {
+  waitingAnswer = true;
+  const soal = pvpSoals[Math.floor(Math.random() * pvpSoals.length)];
+  document.getElementById('pvpSoal').style.display = 'block';
+  document.getElementById('pvpTag').textContent = soal.tag;
+  document.getElementById('pvpQ').textContent = soal.q;
+  const optsDiv = document.getElementById('pvpOpts');
+  optsDiv.innerHTML = '';
+  soal.opts.forEach((opt, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'pvp-opt';
+    btn.textContent = opt;
+    btn.onclick = () => answerPVP(btn, i, soal.correct);
+    optsDiv.appendChild(btn);
+  });
+}
+
+function answerPVP(el, idx, correct) {
+  if (!waitingAnswer) return;
+  const opts = document.querySelectorAll('.pvp-opt');
+  opts.forEach(o => o.onclick = null);
+  if (idx === correct) {
+    el.classList.add('pvp-correct');
+    document.getElementById('daduResult').textContent = '✅ Benar! Tetap maju';
+  } else {
+    el.classList.add('pvp-wrong');
+    opts[correct].classList.add('pvp-correct');
+    posKamu = Math.max(posKamu - 2, 1);
+    document.getElementById('posKamu').textContent = `Kotak ${posKamu}`;
+    buildBoard();
+    document.getElementById('daduResult').textContent = '❌ Salah! Mundur 2 kotak';
+  }
+  waitingAnswer = false;
+  setTimeout(() => {
+    document.getElementById('pvpSoal').style.display = 'none';
+    // Lawan juga gerak
+    const daduLawan = Math.floor(Math.random() * 4) + 1;
+    posLawan = Math.min(posLawan + daduLawan, 25);
+    document.getElementById('posLawan').textContent = `Kotak ${posLawan}`;
+    buildBoard();
+    document.getElementById('daduBtn').disabled = false;
+    document.getElementById('daduResult').textContent = 'Giliran kamu lagi! 🎲';
+  }, 1500);
+}
+
+// Timer tryout
+let timerSec = 2700;
+setInterval(() => {
+  timerSec--;
+  const m = Math.floor(timerSec / 60);
+  const s = timerSec % 60;
+  document.getElementById('toTimer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+}, 1000);
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// Build board on load
+buildBoard();
+
+// Enter to send chat
+document.getElementById('chatInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendChat();
+});
+</script>
+</body>
+</html>
